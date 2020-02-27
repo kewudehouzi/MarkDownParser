@@ -1,12 +1,12 @@
 #include <iostream>
-#include "MD_Parser_copy.h"
+#include "MD_Parser.h"
 #include "head.h"
 using namespace std;
 
 
 
 int main(){
-    MarkDownParser transformer("ForTest.md");
+    MarkDownParser transformer("Test.md");
 
     std::string contents = transformer.getContents();
 
@@ -14,7 +14,7 @@ int main(){
 
     std::ofstream out;
 
-    out.open("ForTest3.html");
+    out.open("Test3.html");
 
     out << head << contents << end << endl;
 }
