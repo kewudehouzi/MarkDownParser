@@ -6,7 +6,7 @@ using namespace std;
 
 
 int main(){
-    MarkDownParser transformer("ForTest.md");
+    MarkDownParser transformer("Test.md");
 
     std::string contents = transformer.getContents();
 
@@ -14,7 +14,7 @@ int main(){
 
     std::ofstream out;
 
-    out.open("ForTest3.html");
+    out.open("Test2.html");
 
     out << head << contents << end << endl;
 }

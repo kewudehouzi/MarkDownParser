@@ -33,7 +33,18 @@ enum
     h5 = 16,
     h6 = 17,
     blockcode = 18,
-    code = 19
+    code = 19,
+    table = 20,
+    thead = 21,
+    tbody = 22,
+    th = 23,
+    thl = 24,
+    thr = 25,
+    thm = 26,
+    tdl = 27,
+    tdr = 28,
+    tdm = 29,
+    tr = 30
 };
 
 const std::string frontTag[] = {
@@ -41,14 +52,19 @@ const std::string frontTag[] = {
     "<hr color=#CCCCCC size=1 />", "<br />",
     "", "<blockquote>",
     "<h1 ", "<h2 ", "<h3 ", "<h4 ", "<h5 ", "<h6 ", //右边的尖括号预留给添加其他的标签属性, 如 id
-    "<pre><code>", "<code>"};
+    "<pre><code>", "<code>", "<table>","<thead>", "<hbody>",
+    "th", "<th style=\"text-align:left\">", "<th style=\"text-align:right\">",
+    "<th style=\"text-align:center\">", "<td style=\"text-align:left\">", "<td style=\"text-align:right\">",
+    "<td style=\"text-align:center\">", "<tr>"};
 
 //HTML后置标签
 const std::string backTag[] = {
     "", "</p>", "", "</ul>", "</ol>", "</li>", "</em>", "</strong>",
     "", "", "", "</blockquote>",
     "</h1>", "</h2>", "</h3>", "</h4>", "</h5>", "</h6>",
-    "</code></pre>", "</code>"};
+    "</code></pre>", "</code>", "</table>","</thead>", "</hbody>",
+    "/th", "</th>", "</th>","</th>","</td>","</td>","</td>",
+     "</tr>"};
 
 struct node{
     int type;
@@ -64,21 +80,18 @@ private:
     string content;
     node *root, *now;
     char s[MAXLEN];
-
+    std::ifstream FileIn;
+    vector<int> TableType;
+/*
+    //class里的函数怎么声明啊？？
     //判断是否添加分割线
-/*    bool IsCutLine(char *src);
+    bool IsCutLine(char *src);
     //跳过行首空格
     pair<int, char*> SkipSpace(char *src);
     //判断类型
     pair<int, char*> JudgeType(char *src);
     //插入段落，需处理加粗斜体转义等情况。
     void insert(node *v, const string &src);
-    //？？？
-    inline node *findnode(int depth);
-    //？？？
-    inline void mkpara(node *v);
-    //？？？
-
     void dfs(node *v);*/
 
 public:
@@ -90,17 +103,22 @@ public:
 
 
         */
-        std::ifstream FileIn(filename);
+        FileIn.open(filename);
         root = new node(nul, nullptr);
         now = root;
         bool NewPara = false; //是否是新段落 为True时新起一段
         bool InBlock = false; //是否在代码块内
+        int InTable = 0; //是否在表格中
         int CntTitle = 0;     //标题深度
         int CntList = 0;      //列表深度
         while(!FileIn.eof()){
 
             //从文件中读取一行
             FileIn.getline(s, MAXLEN);
+            if(InTable == 1){
+                InTable++;
+                continue;
+            }
             //处理不在代码块内且需要换行的情况
             if (!InBlock && IsCutLine(s)){
                 now = root;
@@ -120,10 +138,33 @@ public:
                 else{
                     now = root;
                     NewPara = true;
+                    InTable = 0;
                 }
                 continue;
             }
 
+            //如果在表格中且此行开头为 |
+            if(InTable && Space.second[0] == '|'){
+                char *ch = Space.second + 1;
+                if(InTable == 2)
+                    now->son.push_back(new node(tbody, now));
+                InTable++;
+                now = now->son.back();
+                now->son.push_back(new node(tr, now));
+                now = now->son.back();
+                int len = strlen(ch), cnt = 0;
+                string tmp;
+                for(int i = 0; i < len; i++){
+                    if(ch[i] == '|'){
+                        now->son.push_back(new node(th + 3 + TableType[cnt++], now));
+                        now->son.back()->elem[0] += trim(tmp);
+                        tmp.clear();
+                        continue;
+                    }
+                    tmp += ch[i];
+                }
+                continue;
+            }
             //分析该行文本的类型
             std::pair<int, char *> TJ = JudgeType(Space.second);
 
@@ -143,7 +184,7 @@ public:
 
             //如果是段落则直接添加到末尾。
             if(TJ.first == paragraph){
-                
+
                 if(NewPara){
                     now = root;
                     now->son.push_back(new node(paragraph, now));
@@ -163,7 +204,7 @@ public:
                 insert(root->son.back(), string(TJ.second));
                 continue;
             }
-            
+
             //如果是无序列表
             if(TJ.first == ul){
                 //列表的阶为行首空格/4
@@ -220,6 +261,31 @@ public:
                 }
             }
 
+            //如果是表格（头）
+            if(TJ.first == table){
+                InTable = 1;
+                now = root;
+                now->son.push_back(new node(table, now));
+                now = now->son.back();
+                now->son.push_back(new node(thead, now));
+                now = now->son.back();
+                now->son.push_back(new node(tr, now));
+                now = now->son.back();
+                char *p = TJ.second;
+                int cnt = 0, len = strlen(p);
+                string tmp;
+                for(int i = 0; i < len; i++){
+                    if(p[i] == '|') {
+                        now->son.push_back(new node(th + TableType[cnt++], now));
+                        now->son.back()->elem[0] += trim(tmp);
+                        tmp.clear();
+                        continue;
+                    }
+                    tmp += p[i];
+                }
+                now = now->fa; now = now->fa;
+                continue;
+            }
         }
         FileIn.close();
         dfs(root);
@@ -260,6 +326,12 @@ private:
 
     }
 
+    string trim(string &s){
+        if(s.empty()) return s;
+        s.erase(0,s.find_first_not_of(" "));
+        s.erase(s.find_last_not_of(" ") + 1);
+        return s;
+    }
     pair<int, char*> SkipSpace(char *src){
         //如果该行内容k为空，则直接返回
         if ((int)strlen(src) == 0)
@@ -307,16 +379,22 @@ private:
             ptr++;
         }
         //如果出现空格，则说明是'<h>'标签
-        if (ptr - src > 0 && *ptr == ' ')
+        if (ptr - src > 0 && *ptr == ' '){
+            int len = strlen(ptr) - 1;
+            //吃掉末尾的 #
+            while(ptr[len] == '#') ptr[len] = '\0', len--;
+            while(ptr[len] == ' ') ptr[len] = '\0', len--;
             return make_pair(ptr - src + h1 - 1, ptr + 1);
+        }
+            
         //重置分析位置
         ptr = src;
         //如果出现```则说明是代码块
         if (strncmp(ptr, "```", 3) == 0)
             return make_pair(blockcode, ptr + 3);
-        //如果出现* + -.并且他们的下一个字符为空格，则说明是列表
-        if (strncmp(ptr, "-", 2) == 0)
-            return make_pair(ul, ptr + 1);
+        //如果出现* + -.并且他们的下一个字符为空格，则说明是无序列表
+        if ((ptr[0] == '-' || ptr[0] == '*' || ptr[0] == '+') && ptr[1] == ' ')//原来是strncmp(ptr, "-", 2) == 0 
+            return make_pair(ul, ptr + 2);
         //如果出现 > 且下一字符为空格，则说明是引用
         if (*ptr == '>' && (ptr[1] == ' '))
             return make_pair(quote, ptr + 1);
@@ -326,10 +404,42 @@ private:
             ptr1++;
         if (ptr1 != ptr && *ptr1 == '.' && ptr1[1] == ' ')
             return make_pair(ol, ptr1 + 1);
+        //如果开头是 | ，且第二行为表格对齐方式则为表格
+        if(ptr[0] == '|'){
+            int t = FileIn.tellg(), flag = 1;
+            string tmp;
+            if(!FileIn.eof()) getline(FileIn, tmp);
+            for(int i = 0; i < tmp.length(); i++){
+                if(tmp[i] == '-' || tmp[i] == '|' || tmp[i] == ' ' || tmp[i] == ':');
+                else flag = 0;
+            }
+            TableType.clear();
+            GetTableType(TableType, tmp);
+            FileIn.seekg(t);
+            if(flag)return make_pair(table, ptr + 1);
+        }
         //否则就是普通段落
         return make_pair(paragraph, ptr);
     }
 
+    void GetTableType(vector<int> &V, string s){
+        int status = 0;
+        //左对齐：1， 右对齐：2，居中：3
+        s += ' ';
+        for (int i = 0; i < s.length(); i++){
+            if(s[i] == ' ') continue;
+            if(s[i] == '|') {
+                if(status)
+                    V.push_back(status);
+                status = 0;
+            }
+            if(s[i] == ':' && s[i + 1] == '-')
+                status ^= 1;
+            if(s[i] == '-' && s[i + 1] == ':')
+                status ^= 2;   
+        }
+
+    }
 
     template <typename T> void destroy(T *v){
         for (int i = 0; i < (int)v->son.size(); i++)
@@ -340,8 +450,7 @@ private:
     }
 
 
-    void insert(node *v, const string &src)
-    {
+    void insert(node *v, const string &src){
         int n = (int)src.size();
         bool incode = false, inem = false, instrong = false, inautolink = false;
         v->son.push_back(new node(nul, v));
@@ -357,13 +466,50 @@ private:
             }
 
             //处理行内代码
-            if (ch == '`' && !inautolink)
-            {
+            if (ch == '`' && !inautolink){
                 incode ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(code, v));
                 incode = !incode;
                 continue;
             }
 
+            //处理加粗
+            if (ch == '*' && (i < n - 1 && (src[i + 1] == '*')) && !incode && !inautolink){
+                ++i;
+                instrong ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(strong, v));
+                instrong = !instrong;
+                continue;
+            }
+
+            //处理倾斜
+            if (ch == '_' && !incode && !instrong && !inautolink){
+                inem ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(em, v));
+                inem = !inem;
+                continue;
+            }
+
+            //处理超链接
+            if (ch == '[' && !incode && !instrong && !inem && !inautolink)
+            {
+                v->son.push_back(new node(href, v));
+                for (i += 1; i < n - 1 && src[i] != ']'; i++)
+                    v->son.back()->elem[0] += string(1, src[i]);
+                i++;
+                for (i++; i < n - 1 && src[i] != ' ' && src[i] != ')'; i++)
+                    v->son.back()->elem[1] += string(1, src[i]);
+                if (src[i] != ')')
+                {
+                    for (i++; i < n - 1 && src[i] != ')'; i++)
+                    {
+                        if (src[i] != '"')
+                        {
+                            v->son.back()->elem[2] += string(1, src[i]);
+                        }
+                    }
+                }
+                v->son.push_back(new node(nul, v));
+                continue;
+            }
+            
             v->son.back()->elem[0] += string(1, ch);
             if (inautolink)
                 v->son.back()->elem[1] += string(1, ch);
@@ -375,25 +521,35 @@ private:
                 v->son.push_back(new node(br, v));
         }
     }
-    bool isHeading(node *root){
+
+    inline bool isHeading(node *root){
         return root->type >= h1 && root->type <= h6;
     }
+
+    inline bool isHref(node *v){
+        return (v->type == href);
+    }
+
     void dfs(node *root){
         if (root->type == paragraph && root->elem[0].empty() && root->son.empty())
             return;
-        content += frontTag[root->type] + '\n';
+        content += frontTag[root->type];
 
         bool flag = true;
 
         if (isHeading(root))
         {
-            content += "id=\"" + root->elem[0] + "\">" + '\n';
+            content += "id=\"" + root->elem[0] + "\">";
             flag = false;
         }
-
+        if (isHref(root))
+        {
+            content += "<a href=\"" + root->elem[1] + "\" title=\"" + root->elem[2] + "\">" + root->elem[0] + "</a>";
+            flag = false;
+        }
         if (flag)
         {
-            content += root->elem[0] + '\n';
+            content += root->elem[0];
             flag = false;
         }
         //递归遍历所有
@@ -401,7 +557,7 @@ private:
       //      cout<<"num： "<<i + 1<<endl;
             dfs(root->son[i]);
         }
-            
+
 
         //拼接为结束标签
         content += backTag[root->type] + '\n';
