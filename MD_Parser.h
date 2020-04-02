@@ -11,28 +11,28 @@
 using namespace std;
 
 #define MAXLEN 10000
-
+//词法关键字枚举
 enum
 {
-    nul = 0,
-    paragraph = 1,
-    href = 2,
-    ul = 3, //unordered list
-    ol = 4, //ordered list
-    li = 5,
-    em = 6,
-    strong = 7,
-    hr = 8,
-    br = 9,
-    image = 10,
-    quote = 11,
-    h1 = 12,
+    nul = 0,//开始
+    paragraph = 1,//段落
+    href = 2,//超链接
+    ul = 3, //无序列表
+    ol = 4, //有序列表
+    li = 5,//列表，包装上面3，4的列表形式
+    em = 6,//斜体
+    strong = 7,//强调
+    hr = 8,//水平分割线
+    br = 9,//换行
+    image = 10,//图片
+    quote = 11,//引用
+    h1 = 12,//标题
     h2 = 13,
     h3 = 14,
     h4 = 15,
     h5 = 16,
     h6 = 17,
-    blockcode = 18,
+    blockcode = 18,//代码段
     code = 19,
     table = 20,
     thead = 21,
@@ -46,7 +46,7 @@ enum
     tdm = 29,
     tr = 30
 };
-
+//HTML前置标签
 const std::string frontTag[] = {
     "", "<p>", "", "<ul>", "<ol>", "<li>", "<em>", "<strong>",
     "<hr color=#CCCCCC size=1 />", "<br />",
