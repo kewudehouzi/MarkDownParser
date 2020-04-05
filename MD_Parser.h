@@ -81,7 +81,7 @@ private:
     node *root, *now;
     char s[MAXLEN];
     std::ifstream FileIn;
-    vector<int> TableType;//？？？？？？？什么意思
+    //vector<int> TableType;//？？？？？？？什么意思
 /*
     //class里的函数怎么声明啊？？
     //判断是否添加分割线
@@ -105,7 +105,7 @@ public:
         now = root;
         bool NewPara = false; //是否是新段落 为True时新起一段
         bool InBlock = false; //是否在代码块内
-        int InTable = 0; //是否在表格中
+        int InTable = 0; //1是否在表格头，2是表格体
         int CntTitle = 0;     //标题深度
         int CntList = 0;      //列表深度
         while(!FileIn.eof()){
@@ -128,9 +128,9 @@ public:
             std::pair<int, char *> Space = SkipSpace(s);
 
             //如果没有位于代码块中，且没有统计到空格和Tab,则直接读取下一行
-            if(Space.second == nullptr){     //？？？？？？？表示的不应该是这一行内容为空吗
+            if(Space.second == nullptr){     //这一行为空
                 if(InBlock){
-                    now->son.back()->elem[0] += string(s) + '\n';
+                    now->son.back()->elem[0] += string(s) + '\n';//把空格也加进去，同时再回车
                 }
                 else{
                     now = root;
@@ -271,11 +271,12 @@ public:
                 now->son.push_back(new node(tr, now));
                 now = now->son.back();
                 char *p = TJ.second;
-                int cnt = 0, len = strlen(p);
+                int cnt = 0；//第几列
+                int  len = strlen(p);
                 string tmp;
                 for(int i = 0; i < len; i++){
                     if(p[i] == '|') {
-                        now->son.push_back(new node(th + TableType[cnt++], now));
+                        now->son.push_back(new node(th + TableType[cnt++], now));//第几列是什么对齐方式
                         now->son.back()->elem[0] += trim(tmp);
                         tmp.clear();
                         continue;
@@ -410,7 +411,8 @@ private:
             return make_pair(ol, ptr1 + 1);
         //如果开头是 | ，且第二行为表格对齐方式则为表格
         if(ptr[0] == '|'){
-            int t = FileIn.tellg(), flag = 1;
+            int t = FileIn.tellg()；//
+            int flag = 1;//在表格里
             string tmp;
             if(!FileIn.eof()) getline(FileIn, tmp);
             for(int i = 0; i < tmp.length(); i++){
@@ -419,8 +421,8 @@ private:
             }
             TableType.clear();
             GetTableType(TableType, tmp);
-            FileIn.seekg(t);
-            if(flag)return make_pair(table, ptr + 1);
+            FileIn.seekg(t);//
+            if(flag==1)return make_pair(table, ptr + 1);
         }
         //否则就是普通段落
         return make_pair(paragraph, ptr);
@@ -458,7 +460,7 @@ private:
 
     void insert(node *v, const string &src){
         int n = (int)src.size();
-        bool incode = false, inem = false, instrong = false, inautolink = false;
+        bool incode = false, inem = false, instrong = false, inautolink = false;//超链接
         v->son.push_back(new node(nul, v));
 
         for (int i = 0; i < n; i++)
