@@ -36,15 +36,15 @@ enum
     code = 19,
     table = 20,
     thead = 21,
-    tbody = 22,
-    th = 23,
+    tbody = 22,  //若表格很长，用tbody分段
+    th = 23,    //表头
     thl = 24,
     thr = 25,
     thm = 26,
-    tdl = 27,
+    tdl = 27,   //表单元格
     tdr = 28,
     tdm = 29,
-    tr = 30
+    tr = 30     //表格中的一行
 };
 //HTML前置标签
 const std::string frontTag[] = {
@@ -70,7 +70,7 @@ struct node{
     int type;
     vector<node*> son;
     node *fa;
-    string elem[3];
+    string elem[3];//三个属性, elem[0] 保存了要显示的内容，[1]存了链接,[2]存了 title
     node(int _type, node *f) : type(_type), fa(f) {}
 };
 
@@ -81,7 +81,7 @@ private:
     node *root, *now;
     char s[MAXLEN];
     std::ifstream FileIn;
-    vector<int> TableType;
+    vector<int> TableType;//？？？？？？？什么意思
 /*
     //class里的函数怎么声明啊？？
     //判断是否添加分割线
@@ -99,9 +99,6 @@ public:
         /*
          * 构造函数初始化
          * 处理段落、代码块、标题、表格、有序/无序列表等
-         *
-
-
         */
         FileIn.open(filename);
         root = new node(nul, nullptr);
@@ -120,18 +117,18 @@ public:
                 continue;
             }
             //处理不在代码块内且需要换行的情况
-            if (!InBlock && IsCutLine(s)){
+            if (!InBlock && IsCutLine(s)){//IsCutLine==true表示需要添加分割线
                 now = root;
-                now->son.push_back(new node(hr, now));
+                now->son.push_back(new node(hr, now));//hr表示分割线
                 NewPara = false;
-                continue;
+                continue;//这一行处理好了，重新读取一行
             }
 
-            //计算一行中的空格数和Tab数
+            //int为空格数和Tab数，char*指向正文内容
             std::pair<int, char *> Space = SkipSpace(s);
 
             //如果没有位于代码块中，且没有统计到空格和Tab,则直接读取下一行
-            if(Space.second == nullptr){
+            if(Space.second == nullptr){     //？？？？？？？表示的不应该是这一行内容为空吗
                 if(InBlock){
                     now->son.back()->elem[0] += string(s) + '\n';
                 }
@@ -144,20 +141,22 @@ public:
             }
 
             //如果在表格中且此行开头为 |
-            if(InTable && Space.second[0] == '|'){
+            //在表格中用|来分隔不同单元格，用一行的---来分隔表头和其他行
+            if(InTable! = 0 && Space.second[0] == '|'){
                 char *ch = Space.second + 1;
                 if(InTable == 2)
-                    now->son.push_back(new node(tbody, now));
+                    now->son.push_back(new node(tbody, now));//若表格很长，则分段显示
                 InTable++;
                 now = now->son.back();
-                now->son.push_back(new node(tr, now));
+                now->son.push_back(new node(tr, now));//表格中的一行
                 now = now->son.back();
                 int len = strlen(ch), cnt = 0;
                 string tmp;
                 for(int i = 0; i < len; i++){
                     if(ch[i] == '|'){
                         now->son.push_back(new node(th + 3 + TableType[cnt++], now));
-                        now->son.back()->elem[0] += trim(tmp);
+                        //？？？？？？
+                        now->son.back()->elem[0] += trim(tmp);//保存单元格中的内容
                         tmp.clear();
                         continue;
                     }
@@ -165,14 +164,16 @@ public:
                 }
                 continue;
             }
-            //分析该行文本的类型
+            
+            //分析该行文本的类型，int是文本类型，char*指向文本正文
             std::pair<int, char *> TJ = JudgeType(Space.second);
 
             //如果是代码块类型
             if(TJ.first == blockcode){
                 //如果位于代码块中，则push一个空类型的节点
+                //若不在代码块中，曾push一个代码块节点
                 InBlock ? now->son.push_back(new node(nul, now)) : now->son.push_back(new node(blockcode, now));
-                InBlock = !InBlock;
+                InBlock = !InBlock;//把是否处于代码块中的标识符置反
                 continue;
             }
 
@@ -184,13 +185,12 @@ public:
 
             //如果是段落则直接添加到末尾。
             if(TJ.first == paragraph){
-
-                if(NewPara){
+                if(NewPara==true){  //标识符为true，表示要新起一段，插入一个段落类型的节点
                     now = root;
                     now->son.push_back(new node(paragraph, now));
                 }
                 else{
-                    now = FindNode(root);
+                    now = FindNode(root);//？？？？？？？？
                 }
                 insert(now->son.back(), string(TJ.second));
                 NewPara = false;
@@ -332,6 +332,7 @@ private:
         s.erase(s.find_last_not_of(" ") + 1);
         return s;
     }
+    
     pair<int, char*> SkipSpace(char *src){
         //如果该行内容k为空，则直接返回
         if ((int)strlen(src) == 0)
@@ -464,14 +465,12 @@ private:
                 v->son.back()->elem[0] += string(1, ch);
                 continue;
             }
-
             //处理行内代码
             if (ch == '`' && !inautolink){
                 incode ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(code, v));
                 incode = !incode;
                 continue;
             }
-
             //处理加粗
             if (ch == '*' && (i < n - 1 && (src[i + 1] == '*')) && !incode && !inautolink){
                 ++i;
@@ -479,14 +478,12 @@ private:
                 instrong = !instrong;
                 continue;
             }
-
             //处理倾斜
             if (ch == '_' && !incode && !instrong && !inautolink){
                 inem ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(em, v));
                 inem = !inem;
                 continue;
             }
-
             //处理超链接
             if (ch == '[' && !incode && !instrong && !inem && !inautolink)
             {
@@ -557,8 +554,6 @@ private:
       //      cout<<"num： "<<i + 1<<endl;
             dfs(root->son[i]);
         }
-
-
         //拼接为结束标签
         content += backTag[root->type] + '\n';
     }
