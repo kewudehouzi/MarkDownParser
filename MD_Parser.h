@@ -35,7 +35,7 @@ enum
     blockcode = 18,//代码段
     code = 19,
     table = 20,
-    thead = 21,
+    thead = 21,  //改变表头的颜色？？？
     tbody = 22,  //若表格很长，用tbody分段
     th = 23,    //表头
     thl = 24,
@@ -192,7 +192,7 @@ public:
                 else{
                     now = FindNode(root);//？？？？？？？？
                 }
-                insert(now->son.back(), string(TJ.second));
+                insert(now->son.back(), string(TJ.second));//？？？？？？？
                 NewPara = false;
                 continue;
             }
@@ -210,15 +210,15 @@ public:
                 //列表的阶为行首空格/4
                 int lvl = Space.first/4;
                 now = root;
-                pair<bool, node*> tmp = FindList(lvl, now);
-                if(tmp.first){
+                pair<bool, node*> tmp = FindList(lvl, now);//？？？？？？？
+                if(tmp.first==true){
                     //无序表
                     now = tmp.second;
                     if(now->son.back()->type != ul){
                         now->son.push_back(new node(ul, now));
                     }
                     now = now->son.back();
-                    now->son.push_back(new node(li, now));
+                    now->son.push_back(new node(li, now));//li列表，包装有序列表和无序列表
                     now = now->son.back();
                     now->son.push_back(new node(paragraph, now));
                     insert(now->son.back(), string(TJ.second));
@@ -235,7 +235,6 @@ public:
 
             //如果是有序列表
             if(TJ.first == ol){
-                //列表的阶为行首空格/4
                 int lvl = Space.first/4;
                 now = root;
                 pair<bool, node*> tmp = FindList(lvl, now);
@@ -267,7 +266,7 @@ public:
                 now = root;
                 now->son.push_back(new node(table, now));
                 now = now->son.back();
-                now->son.push_back(new node(thead, now));
+                now->son.push_back(new node(thead, now));//表头颜色？？
                 now = now->son.back();
                 now->son.push_back(new node(tr, now));
                 now = now->son.back();
@@ -309,6 +308,7 @@ private:
         return s;
     }
 
+    //判断是否要换行
     bool IsCutLine(char *src){
         int cnt = 0;
         char *ptr = src;
@@ -374,6 +374,9 @@ private:
         }
         return make_pair(true, root);
     }
+    
+    
+    
     pair<int, char*> JudgeType(char *src){
         char *ptr = src;
         while(*ptr == '#'){
@@ -423,6 +426,7 @@ private:
         return make_pair(paragraph, ptr);
     }
 
+    
     void GetTableType(vector<int> &V, string s){
         int status = 0;
         //左对齐：1， 右对齐：2，居中：3
@@ -442,6 +446,7 @@ private:
 
     }
 
+    
     template <typename T> void destroy(T *v){
         for (int i = 0; i < (int)v->son.size(); i++)
         {
@@ -459,14 +464,14 @@ private:
         for (int i = 0; i < n; i++)
         {
             char ch = src[i];
-            if (ch == '\\')
+            if (ch == '\\')//处理转义字符
             {
                 ch = src[++i];
                 v->son.back()->elem[0] += string(1, ch);
                 continue;
             }
             //处理行内代码
-            if (ch == '`' && !inautolink){
+            if (ch == '`' && !inautolink){//为什么要不在这些特殊的字段里才能处理？？？？？？？？？？
                 incode ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(code, v));
                 incode = !incode;
                 continue;
@@ -489,17 +494,17 @@ private:
             {
                 v->son.push_back(new node(href, v));
                 for (i += 1; i < n - 1 && src[i] != ']'; i++)
-                    v->son.back()->elem[0] += string(1, src[i]);
+                    v->son.back()->elem[0] += string(1, src[i]);//[]中保存的是链接的名字
                 i++;
                 for (i++; i < n - 1 && src[i] != ' ' && src[i] != ')'; i++)
-                    v->son.back()->elem[1] += string(1, src[i]);
+                    v->son.back()->elem[1] += string(1, src[i]);// ( 后是网址
                 if (src[i] != ')')
                 {
                     for (i++; i < n - 1 && src[i] != ')'; i++)
                     {
                         if (src[i] != '"')
                         {
-                            v->son.back()->elem[2] += string(1, src[i]);
+                            v->son.back()->elem[2] += string(1, src[i]);（）中的" "里是别名
                         }
                     }
                 }
@@ -509,7 +514,7 @@ private:
             
             v->son.back()->elem[0] += string(1, ch);
             if (inautolink)
-                v->son.back()->elem[1] += string(1, ch);
+                v->son.back()->elem[1] += string(1, ch);？？？？？
         }
         //处理行末有二空格时加入换行符
         if (src.size() >= 2)
@@ -519,6 +524,7 @@ private:
         }
     }
 
+    
     inline bool isHeading(node *root){
         return root->type >= h1 && root->type <= h6;
     }
@@ -527,6 +533,7 @@ private:
         return (v->type == href);
     }
 
+    //将DOM树结构转化为HTML文件
     void dfs(node *root){
         if (root->type == paragraph && root->elem[0].empty() && root->son.empty())
             return;
