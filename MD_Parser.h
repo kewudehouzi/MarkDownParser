@@ -192,7 +192,7 @@ public:
                 else{
                     now = FindNode(root);//？？？？？？？？
                 }
-                insert(now->son.back(), string(TJ.second));//？？？？？？？
+                insert(now->son.back(), string(TJ.second));//在该正文节点中继续插入剩下的文本
                 NewPara = false;
                 continue;
             }
@@ -210,7 +210,7 @@ public:
                 //列表的阶为行首空格/4
                 int lvl = Space.first/4;
                 now = root;
-                pair<bool, node*> tmp = FindList(lvl, now);//？？？？？？？
+                pair<bool, node*> tmp = FindList(lvl, now);//找到lvl级列表所需要连接的节点
                 if(tmp.first==true){
                     //无序表
                     now = tmp.second;
@@ -357,7 +357,7 @@ private:
         return make_pair(cnttab*4 + cntspace, nullptr);
     }
 
-    //寻找n阶列表
+    //用于查找当前文段需要连接在哪个节点上
     node* FindNode(node *root){
         node *p = root;
         while(!p->son.empty() && p->son.back()->type != nul)
@@ -461,7 +461,7 @@ private:
     void insert(node *v, const string &src){
         int n = (int)src.size();
         bool incode = false, inem = false, instrong = false, inautolink = false;//超链接
-        v->son.push_back(new node(nul, v));
+        v->son.push_back(new node(nul, v));//在最开始先插入一个空节点，用来存放文段内容
 
         for (int i = 0; i < n; i++)
         {
@@ -473,7 +473,7 @@ private:
                 continue;
             }
             //处理行内代码
-            if (ch == '`' && !inautolink){//为什么要不在这些特殊的字段里才能处理？？？？？？？？？？
+            if (ch == '`' && !inautolink){//在超链接中不能包含代码
                 incode ? v->son.push_back(new node(nul, v)) : v->son.push_back(new node(code, v));
                 incode = !incode;
                 continue;
@@ -516,7 +516,7 @@ private:
             
             v->son.back()->elem[0] += string(1, ch);
             if (inautolink)
-                v->son.back()->elem[1] += string(1, ch);？？？？？
+                v->son.back()->elem[1] += string(1, ch);//存入链接部分
         }
         //处理行末有二空格时加入换行符
         if (src.size() >= 2)
@@ -553,14 +553,13 @@ private:
             content += "<a href=\"" + root->elem[1] + "\" title=\"" + root->elem[2] + "\">" + root->elem[0] + "</a>";
             flag = false;
         }
-        if (flag)
+        if (flag==true)//表示这个节点存放的是正文内容，若不是正文，经过上面的判断之后flag会被置为false
         {
             content += root->elem[0];
             flag = false;
         }
         //递归遍历所有
         for (int i = 0; i < (int)root->son.size(); i++){
-      //      cout<<"num： "<<i + 1<<endl;
             dfs(root->son[i]);
         }
         //拼接为结束标签
